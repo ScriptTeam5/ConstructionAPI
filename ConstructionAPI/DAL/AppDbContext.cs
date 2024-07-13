@@ -29,6 +29,17 @@ namespace ConstructionAPI.DAL
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            modelBuilder.Entity<Product>()
+                .HasOne(p => p.Category)
+                .WithMany(c => c.Products)
+                .HasForeignKey(p => p.CategoryId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ProductImage>()
+               .HasOne(pi => pi.Product)
+               .WithMany(p => p.Images)
+               .HasForeignKey(pi => pi.ProductId)
+               .OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<Favorite>().HasKey(f => new { f.UserId, f.ProductId });
 
             modelBuilder.Entity<Favorite>()
