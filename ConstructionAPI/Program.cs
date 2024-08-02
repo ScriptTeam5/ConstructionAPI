@@ -17,6 +17,7 @@ namespace ConstructionAPI
         {
             var builder = WebApplication.CreateBuilder(args);
 
+            builder.Configuration.AddUserSecrets<Program>();
             // Add services to the container.
 
             builder.Services.AddDbContext<AppDbContext>(options =>
@@ -46,7 +47,7 @@ namespace ConstructionAPI
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
             builder.Services.AddScoped<Services.IEmailService, Services.EmailSender>();
-            //builder.Services.AddScoped<AzureBlobService>();
+            builder.Services.AddSingleton<FirebaseStorageService>();
             builder.Services.AddScoped<TokenService>();
             builder.Services.AddAutoMapper(typeof(MappingProfile));
             // JWT Authentication
@@ -56,19 +57,19 @@ namespace ConstructionAPI
                 options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
                 options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
             })
-            .AddJwtBearer(options =>
-            {
-                options.TokenValidationParameters = new TokenValidationParameters
-                {
-                    ValidateIssuer = true,
-                    ValidateAudience = true,
-                    ValidateLifetime = true,
-                    ValidateIssuerSigningKey = true,
-                    ValidIssuer = builder.Configuration["Jwt:Issuer"],
-                    ValidAudience = builder.Configuration["Jwt:Audience"],
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
-                };
-            })
+            //.AddJwtBearer(options =>
+            //{
+            //    options.TokenValidationParameters = new TokenValidationParameters
+            //    {
+            //        ValidateIssuer = true,
+            //        ValidateAudience = true,
+            //        ValidateLifetime = true,
+            //        ValidateIssuerSigningKey = true,
+            //        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            //        ValidAudience = builder.Configuration["Jwt:Audience"],
+            //        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
+            //    };
+            //})
             .AddCookie();
             builder.Services.Configure<IdentityOptions>(options =>
             {
@@ -95,13 +96,8 @@ namespace ConstructionAPI
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
-                app.UseSwaggerUI(c =>
-                {
-                    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Dispatch Api V1");
-                    c.RoutePrefix = string.Empty;
-                });
+                app.UseSwaggerUI();
             }
-
             app.UseHttpsRedirection();
             app.UseRouting();
 

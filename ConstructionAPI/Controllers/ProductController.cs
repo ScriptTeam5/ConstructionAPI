@@ -14,23 +14,26 @@ namespace ConstructionAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class ProductsController : ControllerBase
+    public class ProductController : ControllerBase
     {
         private readonly AppDbContext _context;
         private readonly TokenService _tokenService;
-        public ProductsController(AppDbContext context, TokenService tokenService)
+        private readonly FirebaseStorageService _firebaseStorageService;
+        public ProductController(AppDbContext context, TokenService tokenService, FirebaseStorageService firebaseStorageService)
         {
             _context = context;
             _tokenService = tokenService;
+            _firebaseStorageService = firebaseStorageService;
         }
 
-        [HttpPost]
-        public async Task<IActionResult> Create([FromForm] CreateProductDTO dto, [FromHeader(Name = "Authorization")] string token)
+        [HttpPost("create")]
+        public async Task<IActionResult> Create([FromForm] CreateProductDTO dto)
         {
-            if (!ModelState.IsValid) return BadRequest(ModelState);
-            var user = await _tokenService.ValidateTokenAndGetUserAsync(token);
+            //if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            if (user == null) return NotFound("User not found.");
+            //var user = await _tokenService.ValidateTokenAndGetUserAsync(token);
+
+            //if (user == null) return NotFound("User not found.");
 
             using (var transaction = await _context.Database.BeginTransactionAsync())
             {
@@ -43,36 +46,37 @@ namespace ConstructionAPI.Controllers
                         Price = dto.Price,
                         CategoryId = dto.CategoryId,
                         ShopId = dto.ShopId,
-                        UserId=user.Id,
+                        UserId = 1,
                         CreatedAt = DateTime.UtcNow,
-                        Attributes = dto.Attributes,
                         Images = new List<ProductImage>()
                     };
 
-                    if (dto.ImageFiles != null && dto.ImageFiles.Any())
+                    await _context.Products.AddAsync(product);
+                    await _context.SaveChangesAsync();
+
+                    foreach (var a in dto.Attributes)
                     {
-                        foreach (var file in dto.ImageFiles)
+                        var attribute = new ProductAttribute
                         {
-                            if (file.Length > 0)
-                            {
-                                var filePath = Path.Combine("wwwroot/images/products", file.FileName);
-
-                                using (var stream = new FileStream(filePath, FileMode.Create))
-                                {
-                                    await file.CopyToAsync(stream);
-                                }
-
-                                product.Images.Add(new ProductImage { ImageUrl = $"/images/products/{file.FileName}" });
-                            }
-                        }
+                            Name = a.Name,
+                            Value = a.Value,
+                            ProductId = product.Id,
+                            IsActive = true
+                        };
+                        await _context.ProductAttributes.AddAsync(attribute);
                     }
 
-                    _context.Products.Add(product);
+                    foreach (var file in dto.ImageFiles)
+                    {
+                        var fileUrl = await _firebaseStorageService.UploadFileAsync(file);
+                        await _context.ProductImages.AddAsync(new ProductImage { ProductId = product.Id, ImageUrl = fileUrl, IsActive = true });
+                    }
+
                     await _context.SaveChangesAsync();
 
                     await transaction.CommitAsync();
 
-                    return CreatedAtAction(nameof(GetProductById), new { id = product.Id }, product);
+                    return Ok("Created.");
                 }
                 catch (Exception)
                 {

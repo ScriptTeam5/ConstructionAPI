@@ -4,8 +4,7 @@
     {
         public static bool IsImage(this IFormFile file)
         {
-            if (file == null || file.Length == 0)
-                return false;
+            if (file == null || file.Length == 0) return false;
 
             // Extension control
             string fileExtension = Path.GetExtension(file.FileName);
@@ -18,15 +17,9 @@
             {
                 return false;
             }
-            if (file.Length > 5 * 1024 * 1024) // 5 MB
-            {
-                return false;
-            }
+            if (file.Length > 15 * 1024 * 1024) return false; //5MB
             // MIME control
-            if (!file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
-            {
-                return false;
-            }
+            if (!file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase)) return false;
 
             return true;
         }
